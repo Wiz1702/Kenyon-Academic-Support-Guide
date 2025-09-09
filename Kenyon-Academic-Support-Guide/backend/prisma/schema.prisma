@@ -1,0 +1,156 @@
+
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+model users {
+  id        String   @id @default(uuid())
+  campus_user_id String @unique
+  email     String   @unique
+  first_name String
+  last_name  String
+  role      String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  student_profiles student_profiles?
+  favorites favorites[]
+}
+
+model student_profiles {
+  id        String  @id @default(uuid())
+  user_id   String  @unique
+  major     String?
+  minors    String[]
+  grad_year Int?
+  career_interest_primary String?
+  career_interest_custom  String?
+  completed_course_ids String[]
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  users     users   @relation(fields: [user_id], references: [id])
+}
+
+model career_options {
+  id      String @id @default(uuid())
+  label   String @unique
+  synonyms String[]
+  interest_course_map interest_course_map[]
+  interest_org_map interest_org_map[]
+  interest_keyword_map interest_keyword_map[]
+}
+
+model courses {
+  id          String @id @default(uuid())
+  subject     String
+  catalog_nbr String
+  title       String
+  description String?
+  credits     Decimal?
+  level       String?
+  course_prereqs_course_id course_prereqs[] @relation("course_id")
+  course_prereqs_prereq_id course_prereqs[] @relation("prereq_id")
+  course_offerings course_offerings[]
+  interest_course_map interest_course_map[]
+  @@unique([subject, catalog_nbr], name: "subject_catalog_nbr")
+}
+
+model course_prereqs {
+  id               String @id @default(uuid())
+  course_id        String
+  prereq_course_id String
+  co_requisite     Boolean @default(false)
+  courses_course_id courses @relation("course_id", fields: [course_id], references: [id])
+  courses_prereq_id courses @relation("prereq_id", fields: [prereq_course_id], references: [id])
+}
+
+model course_offerings {
+  id         String @id @default(uuid())
+  course_id  String
+  term_code  String
+  section    String
+  schedule   Json?
+  instructor String?
+  seats_total Int?
+  seats_available Int?
+  status     String?
+  courses    courses @relation(fields: [course_id], references: [id])
+  @@unique([course_id, term_code, section])
+}
+
+model interest_course_map {
+  id String @id @default(uuid())
+  career_option_id String
+  course_id String
+  relevance_score Decimal @default(0.5)
+  career_options career_options @relation(fields: [career_option_id], references: [id])
+  courses courses @relation(fields: [course_id], references: [id])
+}
+
+model interest_keyword_map {
+  id String @id @default(uuid())
+  career_option_id String
+  keyword String
+  weight Decimal @default(0.5)
+  career_options career_options @relation(fields: [career_option_id], references: [id])
+}
+
+model organizations {
+  id          String @id @default(uuid())
+  name        String @unique
+  category    String?
+  description String?
+  contact_email String?
+  meeting_info String?
+  interest_org_map interest_org_map[]
+}
+
+model interest_org_map {
+  id String @id @default(uuid())
+  career_option_id String
+  organization_id String
+  relevance_score Decimal @default(0.5)
+  career_options career_options @relation(fields: [career_option_id], references: [id])
+  organizations organizations @relation(fields: [organization_id], references: [id])
+}
+
+model alumni {
+  id        String @id @default(uuid())
+  full_name String
+  grad_year Int?
+  email     String?
+  linkedin_url String?
+  location  String?
+  mentorship_available Boolean @default(false)
+  privacy_level String @default("restricted")
+  alumni_positions alumni_positions[]
+}
+
+model alumni_positions {
+  id        String @id @default(uuid())
+  alumni_id String
+  company   String?
+  title     String?
+  start_date DateTime?
+  end_date   DateTime?
+  is_current Boolean @default(false)
+  alumni    alumni @relation(fields: [alumni_id], references: [id])
+}
+
+model favorites {
+  id        String @id @default(uuid())
+  user_id   String
+  entity_type String
+  entity_id String
+  created_at DateTime @default(now())
+  users users @relation(fields: [user_id], references: [id])
+  @@unique([user_id, entity_type, entity_id])
+}
+
+model explanations {
+  id        String @id @default(uuid())
+  user_id   String
+  entity_type String
+  entity_id String
+  reasons   Json
+  confidence Decimal
+  created_at DateTime @default(now())
+}
